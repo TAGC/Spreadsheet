@@ -142,7 +142,6 @@ public class Spreadsheet implements SpreadsheetInterface {
 			
 			if (!cell_has_dependents) {
 				calculateCellValue(c);
-				System.out.println("THIS FAR!");
 				ignored_cells.add(current_cell);
 			} else {
 				dependent_cells.addLast(current_cell);
@@ -187,11 +186,9 @@ public class Spreadsheet implements SpreadsheetInterface {
 		
 		cells_referenced = cell.getCellsReferenced();
 		
-		System.out.println("I guess this far too?");
 		System.out.println(cells_referenced.toArray().getClass().getName());
 
 		Iterator<Cell> iterator = cells_referenced.iterator();
-		System.out.println("THIS FAR MAN!");
 		while(iterator.hasNext()) {
 			final Cell next_dependent = iterator.next();
 			System.out.println("NEXT DEPENDENT: " + next_dependent);
@@ -234,9 +231,7 @@ public class Spreadsheet implements SpreadsheetInterface {
 		Value cell_value;
 		String cell_expression;
 		
-		System.out.println("THIS FAR MAN LOL!");
 		cell_expression = cell.getExpression();
-		System.out.println("NOW THIS FAR!");
 		buildCellValueMap(cell);
 		
 		System.out.println("CELL VALUES: " + Arrays.deepToString(cell_values.entrySet().toArray()));
