@@ -1,5 +1,8 @@
 package spreadsheet;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -10,23 +13,25 @@ import java.util.Set;
 import spreadsheet.api.CellLocation;
 import spreadsheet.api.ExpressionUtils;
 import spreadsheet.api.SpreadsheetInterface;
+import spreadsheet.api.value.InvalidValue;
 import spreadsheet.api.value.LoopValue;
 import spreadsheet.api.value.Value;
+import spreadsheet.api.value.ValueVisitor;
 
 public class Spreadsheet implements SpreadsheetInterface {
 	
 	private static final Value default_value       = null;
 	private static final String default_expression = "";
-	private Map<CellLocation, Cell> cellmap
+	private final Map<CellLocation, Cell> cellmap
 	        = new HashMap<CellLocation, Cell>();
 	
-	private Map<CellLocation, Double> cell_values
+	private final Map<CellLocation, Double> cell_values
 	        = new HashMap<CellLocation, Double>();
 	
-	private Set<Cell> altered_cells
+	private final Set<Cell> altered_cells
 	        = new HashSet<Cell>();
 	
-	private Set<Cell> ignored_cells
+	private final Set<Cell> ignored_cells
 	        = new HashSet<Cell>();
 
 	@Override
@@ -104,14 +109,47 @@ public class Spreadsheet implements SpreadsheetInterface {
 	private void recomputeCell(Cell c) {
 		String cell_expression;
 		Value cell_value;
-		LinkedHashSet<Cell> cells_seen = new LinkedHashSet<Cell>();
+		LinkedHashSet<Cell> cells_seen;
+		ArrayDeque<Cell> dependent_cells = new ArrayDeque<Cell>();
+		Cell current_cell;
+		boolean cell_has_dependents;
+		
+		cells_seen = new LinkedHashSet<Cell>();
 		
 		cell_expression = c.getExpression();
-		cell_value      = ExpressionUtils.computeValue(cell_expression,
-													   cell_values);
+		//cell_value      = ExpressionUtils.computeValue(cell_expression,
+		//											   cell_values);
 		
-		c.setValue(cell_value);
+		c.setValue(new InvalidValue(c.getExpression()));
 		checkLoops(c, cells_seen);
+		
+		if (c.getValue() == LoopValue.INSTANCE) { return; }
+		
+		System.out.println("CELL VALUE: " + c.getValue());
+		dependent_cells.addFirst(c);
+		
+		while(!dependent_cells.isEmpty()) {
+			current_cell = dependent_cells.removeFirst();
+			
+			System.out.println("Current cell: " + current_cell);
+			cell_has_dependents = false;
+			for(Cell dependent : current_cell.getCellsReferenced()) {
+				if (altered_cells.contains(dependent)) {
+					dependent_cells.addFirst(dependent);
+					cell_has_dependents = true;
+				}
+			}
+			
+			if (!cell_has_dependents) {
+				calculateCellValue(c);
+				System.out.println("THIS FAR!");
+				ignored_cells.add(current_cell);
+			} else {
+				dependent_cells.addLast(current_cell);
+			}
+			
+			System.out.println(Arrays.deepToString(dependent_cells.toArray()));
+		}
 	}
 	
 	private void checkLoops(Cell c, LinkedHashSet<Cell> cells_seen) {
@@ -122,6 +160,7 @@ public class Spreadsheet implements SpreadsheetInterface {
 		
 		if (cells_seen.contains(c)) {
 			cells = new LinkedHashSet<Cell>(cells_referenced);
+			System.out.println("SEEN CELL: " + c);
 			markAsLoop(c, cells);
 		} else {
 			cells_seen.add(c);
@@ -141,5 +180,68 @@ public class Spreadsheet implements SpreadsheetInterface {
 			ignored_cells.add(c);
 		}
 	}
+	
+	private void buildCellValueMap(Cell cell) {
+		Set<Cell> cells_referenced;
+		Value dependent_value;
+		
+		cells_referenced = cell.getCellsReferenced();
+		
+		System.out.println("I guess this far too?");
+		System.out.println(cells_referenced.toArray().getClass().getName());
+
+		Iterator<Cell> iterator = cells_referenced.iterator();
+		System.out.println("THIS FAR MAN!");
+		while(iterator.hasNext()) {
+			final Cell next_dependent = iterator.next();
+			System.out.println("NEXT DEPENDENT: " + next_dependent);
+			dependent_value    = next_dependent.getValue();
+			
+			dependent_value.visit(new ValueVisitor() {
+
+				@Override
+				public void visitDouble(double value) {
+					cell_values.put(next_dependent.getLocation(),
+							        value);
+				}
+
+				@Override
+				public void visitLoop() {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void visitString(String expression) {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void visitInvalid(String expression) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				
+			});
+		}
+		
+		
+	}
+
+	private void calculateCellValue(Cell cell) {
+		Value cell_value;
+		String cell_expression;
+		
+		System.out.println("THIS FAR MAN LOL!");
+		cell_expression = cell.getExpression();
+		System.out.println("NOW THIS FAR!");
+		buildCellValueMap(cell);
+		
+		System.out.println("CELL VALUES: " + Arrays.deepToString(cell_values.entrySet().toArray()));
+		System.out.println("CELL EXPRESSION: " + cell_expression);
+		cell_value = ExpressionUtils.computeValue(cell_expression, cell_values);
+		cell.setValue(cell_value);
+	}
 }
- 
