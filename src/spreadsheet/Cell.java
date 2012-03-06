@@ -92,6 +92,13 @@ public class Cell implements Observer<Cell> {
 	@Override
 	public void update(Cell changed) {
 		value = new InvalidValue(expression);
+		
+		/*
+		 * This code notifies the dependent cell that this
+		 * cell is observing (dependent upon) it.
+		 */
+		spreadsheet.getCellMap().get(changed).addObserver(this);
+		
 		informObservers();
 		informSpreadsheet();
 	}
@@ -127,11 +134,6 @@ public class Cell implements Observer<Cell> {
 		for(CellLocation cl : cell_locations) {
 			cells_referenced.add(spreadsheet.getCellMap().get(cl));
 			
-			/*
-			 * This code notifies the dependent cell that this
-			 * cell is observing (dependent upon) it.
-			 */
-			spreadsheet.getCellMap().get(cl).addObserver(this);
 		}
 		
 		System.out.println("Cells Referenced: " + Arrays.deepToString(cells_referenced.toArray()));
